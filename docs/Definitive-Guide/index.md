@@ -366,7 +366,7 @@ vrrp_instance inside_network {
 
   
 
-#### 2.3.3 LVS 配置 TODO
+#### 2.3.3 LVS 配置
 
 LVS 的配置也包括2部分：虚拟主机组(virtual server group) 和 虚拟主机(virtual server)。这些配置都会传递给ipvsadm 作为参数。
 
@@ -396,11 +396,88 @@ virtual_server 可以以一下 3种 方式中的任意一种配置：
 
 如下例：
 
+```bash
+virtual_server 192.168.1.2 80 {      # 设置一个 virtual server: VIP:Vport
+	delay_loop 3                       # service polling 的 delay 时间
+	lb_algo rr|wrr|lc|wlc|lblc|sh|dh   # LVS 的调度算法
+	lb_kind NAT|DR|TUN                 # LVS 集群模式
+	persistence_timeout 120            # 会话保持时间(秒)
+	persistence_granularity <NETMASK>  # LVS 会话保持力度 ipvsadm 中的 -M 参数，默认是 0xffffffff，即根据每个客户端作会话保持
+	protocol TCP                       # 使用的协议是 TCP 还是 UDP
+	ha_suspend                         # suspendhealthchecker’s activity
+	virtualhost <string>               # HTTP_GET 做健康检査时，检査的 Web服务器的虚拟主机（即Host:头）
+	sorry_server <IPADDR> <PORT>       # 备用机，所有的real server 失效后使用
+	
+	# 每台 RealServer 都需要一个下面的配置项
+	real_server <IPADDR> <PORT>
+  {
+    weight 1                                   # 默认为 1，0 为失效
+    inhibit_on_failure    # 在服务器健康检查失败时，将 weight 设置为 0，而不是直接从 IPVS 里面删除
+    notify_up <STRING> | <QUOTED-STRING>       # 在检测到 service up 后执行的脚本
+    notify_down <STRING> | <QUOTED-STRING>     # 在检测到service down后 执行的脚本
+    
+# 下面配置任意一种健康检查方式:HTTP_GET|SSL_GET|TCP_CHECK|SMTP_CHECK|MISC_CHECK
+
+    HTTP_GET | SSL_GET
+    {
+      url { # HTTP/SSL 检查 URL，这里可以指定多个 URL
+        path /
+        digest <STRING>       # SSL检查后的摘要信息（genhash 工具算出）
+        status_code 200       # HTTP检査的返回状态码
+      }
+      
+      connect_port 80         # 健康检査端口
+      bindto <IPADD>          # 以此地址发送请求对服务器进行健康检査
+      connect_timeout         # 连接超时时间
+      nb_get_retry 3          # 重连次数
+      delay_before_retry 2    # 重连间隔时间（秒）
+    } # END OF HTTP_GET|SSL_GET
+
+    # TCP 方式健康检查
+    TCP_CHECK {
+      connect_port 80
+      bindto 192.168.1.1
+      connect_timeout 4
+    } # TCP_CHECK
+
+    # SMTP 方式健康检查
+    SMTP_CHECK {
+    
+      # 这里的配置意义和 HTTP 类似
+      host {
+        connect_ip <IP ADDRESS>
+        connect_port <PORT> # 默认 25 端口
+        bindto <IP ADDRESS>
+      }
+
+      connect_timeout <INTEGER>
+      retry <INTEGER>
+      delay_before_retry <INTEGER>
+      
+      # "smtp HELO" 请求命令参数，可选的
+      helo_name <STRING>|<QUOTED-STRING>
+      
+    } #SMTP_CHECK
+
+    # MISC 健康检查方式，执行一个程序
+    MISC_CHECK
+    {
+      # 外部程序或脚本路径
+      misc_path <STRING>|<QUOTED-STRING>
+      # 脚本执行的超时时间
+      misc_timeout <INT>
+      
+      # 如果设置了 misc_dynamic 的话，healthchecker程序的退出状态码会用来动态调整服务器的权重(weight)
+      # 返回0:健康检査0K,权重不被修改 
+      # 返回1:健康检査失败，权重设为0 
+      # 返回2-255:健康检查0K,权重设置为：退出状态码-2, 比如返回255,那么 weight=255-2=253 
+      misc_dynamic
+    }
+    
+  } # Realserver
+  
+} # Virtual Server
 ```
-
-```
-
-
 
 
 
