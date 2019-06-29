@@ -485,7 +485,7 @@ virtual_server 192.168.1.2 80 {      # 设置一个 virtual server: VIP:Vport
 
 本章主要介绍两种 Keepalived 的使用，一种仅使用 Keepalived 做 HA，一种既做 HA 又用来配置 LVS。
 
-### 3.1 用 Keepalived 做HA
+### 3.1 用 Keepalived 做 HA
 
 用 Keepalived 做 HA 是如此的简单，我们所有的精力都在配置 Keepalived 的 VRRP 子进程上，而完全可以不管LVS 的配置。这节我们假设给两台运行 HAProxy 的机器做 HA，提供 VIP。架构如下：
 
